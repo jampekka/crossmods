@@ -206,7 +206,7 @@ struct Vddm {
 		};
 
 		auto nolatecross = (*this);
-		nolatecross.pass_threshold = 0.0;
+		nolatecross.pass_threshold = -std::numeric_limits<double>::infinity();
 		return nolatecross.decisions(acts, taus, decidedpdf, dur, unblocked_share);
 	}
 
