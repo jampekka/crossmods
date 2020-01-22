@@ -4,8 +4,9 @@ import sys
 import inspect
 
 def dump_class(decl):
+    if not decl.name.isalnum(): return ''
     fullname = declarations.declaration_utils.full_name(decl)
-    
+
     memberdefs = []
     for member in decl.public_members:
         d = def_decl(member)
