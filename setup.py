@@ -78,7 +78,7 @@ class BuildExt(build_ext):
         l_opts['unix'] += darwin_opts
 
     def build_extensions(self):
-        bindgen.main("crossmods", "vddm.hpp", outfile="crossmods.cpp")
+        bindgen.main("crossmods", "crossmods.hpp", outfile="crossmods.cpp")
 
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])

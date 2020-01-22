@@ -1,20 +1,13 @@
 #pragma once
-#include <cmath>
-#include <math.h>
-#include <memory>
-#include <vector>
-#include <algorithm>
-#include <functional>
-//#include "fastonebigheader.h"
+#include "common.hpp"
+
 
 namespace crossmods {
 using std::atan;
 using std::erf;
 using std::erfc;
 using std::sqrt;
-using std::vector;
 
-using invec = const std::vector<double>&;
 
 /*
 inline double fastPow(double a, double b) {
@@ -39,6 +32,7 @@ fastererfc (double x)
 
 // Come on C++ people!!
 static const double pi = atan(1.0)*4;
+
 inline double stdnormcdf(double x) {
 	return (1.0 + erf(x))/2.0;
 	//return 1.0 - fastererfc(x)/2.0;
@@ -50,64 +44,6 @@ inline double normcdf(double x, double m, double v) {
 	return stdnormcdf(z);
 }
 
-struct Grid1d {
-	double _low;
-	double dx;
-	size_t N;
-
-	Grid1d(double low, double high, size_t N)
-		:_low(low), dx((high - low)/N), N(N)
-	{}
-
-	size_t bin(double x) const {
-		return (x - _low)/dx;
-	}
-	
-	double low() {
-		return _low;
-	}
-
-	double high() const {
-		return _low + N*dx;
-	}
-
-	double operator[](size_t i) const {
-		return _low + i*dx;
-	}
-};
-
-struct CrossingPdf {
-	Grid1d grid;
-	vector<double> ps;
-	double uncrossed = 1.0;
-	
-	CrossingPdf(size_t dur, double dt)
-		:grid(0.0, dur*dt, dur), ps(dur, 0.0)
-	{}
-	
-	double operator()(double ct) {
-		if(ct < grid.low() || ct > grid.high()) {
-			return nan("");
-		}
-		
-		// TODO: Linear interpolation!
-
-		return ps[grid.bin(ct)];
-	}
-
-	double loglikelihood(invec cts, double slack=0.0) {
-		double loglik = 0.0;
-		for(auto ct : cts) {
-			if(ct > grid.high()) {
-				loglik += std::log(uncrossed + slack);
-			} else {
-				loglik += std::log((*this)(ct) + slack);
-			}
-		}
-
-		return loglik;
-	}
-};
 
 struct Vddm {
 	double dt;
@@ -194,7 +130,8 @@ struct Vddm {
 	double decisions(const Grid1d& acts, const double taus[], double decidedpdf[], size_t dur) const {
 		return decisions(acts, taus, decidedpdf, dur, [](size_t t) { return 1.0; });
 	}
-
+	
+	// TODO: Refactor these blocker hacks out of here
 	double blocker_decisions(const Grid1d& acts, const double taus[], const double taus_b[], double decidedpdf[], size_t dur) const {
 		auto noearlycross = (*this);
 		noearlycross.tau_threshold = std::numeric_limits<double>::infinity();
