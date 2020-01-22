@@ -196,8 +196,9 @@ struct Vddm {
 	}
 
 	double blocker_decisions(const Grid1d& acts, const double taus[], const double taus_b[], double decidedpdf[], size_t dur) const {
-		auto has_passed = [&](size_t t) { return taus_b[t] <= pass_threshold ? 1.0 : 0.0; };
-		decisions(acts, taus_b, decidedpdf, dur, has_passed);
+		auto noearlycross = (*this);
+		noearlycross.tau_threshold = std::numeric_limits<double>::infinity();
+		noearlycross.decisions(acts, taus_b, decidedpdf, dur);
 
 		auto unblocked = 0.0;
 		auto unblocked_share = [&](int t) {
