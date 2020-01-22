@@ -95,13 +95,13 @@ struct CrossingPdf {
 		return ps[grid.bin(ct)];
 	}
 
-	double loglikelihood(invec cts) {
+	double loglikelihood(invec cts, double slack=0.0) {
 		double loglik = 0.0;
 		for(auto ct : cts) {
 			if(ct > grid.high()) {
-				loglik += uncrossed;
+				loglik += std::log(uncrossed + slack);
 			} else {
-				loglik += std::log((*this)(ct));
+				loglik += std::log((*this)(ct) + slack);
 			}
 		}
 
@@ -147,8 +147,6 @@ struct Vddm {
 			new_weights[N-1] += (1.0 - too_small)*prev_weights[from];
 		}
 		
-		// TODO: No need to do the whole loop, but one more loop here
-    		// doesn't matter so much
 		double decided = 0.0;
 		double weightsum = 0.0;
 		for(size_t i=0; i < N; ++i) {
