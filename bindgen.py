@@ -27,7 +27,6 @@ def args_def(decl):
     
     return argstrings
 
-
 def func_def(decl, funcname=None):
     typestring = decl.create_decl_string()
 
@@ -75,7 +74,6 @@ def var_def(decl):
 
 def constructor_def(decl):
     argtypes = ", ".join(map(str, decl.argument_types))
-    #args = ", ".join(args_def(decl))
     func = f'py::init<{argtypes}>()'
     bargs = ", ".join([func, *args_def(decl)])
     return f'def({bargs})'
@@ -112,7 +110,7 @@ def def_decl(decl):
     return f(decl)
 
 
-def main(namespace, *headers):
+def main(namespace, *headers, outfile=None):
     generator_path, generator_name = utils.find_xml_generator()
     xml_generator_config = parser.xml_generator_configuration_t(
         xml_generator_path=generator_path,
@@ -123,9 +121,15 @@ def main(namespace, *headers):
 
     ns = global_namespace.namespace(namespace)
     
+    if outfile is None:
+        outfile = sys.stdout
+    else:
+        outfile = open(outfile, 'w')
+
     def out(s):
         if not s: return
-        print(s)
+        outfile.write(s)
+        outfile.write('\n')
 
     out("#include <pybind11/pybind11.h>")
     out("#include <pybind11/stl.h>")
