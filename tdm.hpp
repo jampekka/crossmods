@@ -1,5 +1,6 @@
 #include "common.hpp"
 #include <functional>
+#include <assert.h>
 
 namespace crossmods {
 
@@ -7,7 +8,7 @@ using std::sqrt;
 using std::erf;
 using std::log;
 
-
+const double erfinvhalf = 0.4769362762044698;
 
 struct NormalDistribution {
 	double mean;
@@ -26,7 +27,8 @@ struct NormalDistribution {
 struct LognormalDistribution {
 	double mean;
 	double std;
-
+	
+	// TODO: Use the real mean and std!
 	LognormalDistribution(double mean=0.0, double std=1.0)
 		: mean(mean), std(std)
 	{}
@@ -51,42 +53,58 @@ struct LognormalTdm {
 	private:
 	ThresholdDist th_d;
 	LatencyDist latency_d;
-	PassedDist passed_d;
+	double pass_th;
 	public:
 	
-	LognormalTdm(double thm, double ths, double lagm, double lags, double passm, double passs)
-		:th_d(thm, ths), latency_d(lagm, lags), passed_d(passm, passs)
-	{}
+	LognormalTdm(double thm, double ths, double lagm, double lags, double pass_th)
+		:th_d(thm, ths), latency_d(lagm, lags), pass_th(pass_th)
+	{
+	}
 
-	CrossingPdf& decisions(CrossingPdf& out, invec taus) {
-		decisions_cdf(out, taus, [](size_t t) { return 1.0; });
-		double prev = 0.0;
-		for(size_t t=0; t < out.grid.N; ++t) {
-			double p = out.ps[t];
-			out.ps[t] = (p - prev)/out.grid.dx;
-			prev = p;
+	CrossingPdf& decisions(CrossingPdf& out, invec taus, size_t start=0) {
+		auto ts = out.grid;
+		auto dt = ts.dx;
+		auto N = ts.N;
+
+		double max_seen = -inf;
+		double decided = 0.0;
+
+		for(size_t t=start; t < out.grid.N; ++t) {
+			auto tau = taus[t];
+			if(tau <= pass_th) tau = inf;
+			if(tau <= max_seen) continue;
+			max_seen = tau;
+			auto deciders = th_d.cdf(max_seen) - decided;
+			decided += deciders;
+			
+			auto prev_p = 0.0; // = latency_d.cdf(0.0);
+			for(size_t crossing_t=t; crossing_t < N; ++crossing_t) {
+				auto lag = ts[crossing_t] - ts[t];
+				auto p = latency_d.cdf(lag + dt);
+				
+				out.ps[crossing_t] += deciders*(p - prev_p);
+				prev_p = p;
+			}
+		}
+		
+		out.uncrossed = 1.0;
+		for(auto& p : out.ps) {
+			out.uncrossed -= p;
+			p /= dt;
 		}
 
 		return out;
 	}
-	
+
+		
 	// TODO: Refactor this out
 	CrossingPdf& blocker_decisions(CrossingPdf& out, invec taus, invec taus_b) {
-		auto noearlycross = (*this);
-		noearlycross.th_d.mean = inf;
-		CrossingPdf unblocked(out.grid.N, out.grid.dx);
-		noearlycross.decisions_cdf(unblocked, taus_b, [](size_t t) { return 1.0; });
+		size_t start=0;
 
+		for(; (start < out.grid.N) && (taus_b[start] > pass_th); ++start);
 		auto nolatecross = (*this);
-		nolatecross.passed_d.mean = -inf;
-		nolatecross.decisions_cdf(out, taus, [&](size_t t) { return unblocked.ps[t]; });
-
-		double prev = 0.0;
-		for(size_t t=0; t < out.grid.N; ++t) {
-			double p = out.ps[t];
-			out.ps[t] = (p - prev)/out.grid.dx;
-			prev = p;
-		}
+		nolatecross.pass_th = -inf;
+		nolatecross.decisions(out, taus, start);
 
 		return out;
 	}
@@ -102,52 +120,6 @@ struct LognormalTdm {
 		decisions(*out, taus);
 		return out;
 	}
-
-	private:
-	
-	template <typename goddamn>
-	void decisions_cdf(CrossingPdf& out, invec taus, goddamn unblocked_cdf) {
-		// TODO: We don't actually have to grid this, especially
-		// for simple trajectories
-		auto ts = out.grid;
-		auto dt = ts.dx;
-		auto N = ts.N;
-
-		double max_seen = -inf;
-		double min_seen = inf;
-		
-		auto max_decided = 0.0;
-		auto min_decided = 0.0;
-
-		for(size_t t=0; t < N; ++t) {
-			auto tau = taus[t];
-			
-			if(tau > max_seen) {
-				max_seen = tau;
-				max_decided = th_d.cdf(max_seen);
-			}
-
-			if(tau < min_seen) {
-				min_seen = tau;
-				min_decided = 1.0 - passed_d.cdf(min_seen);
-			}
-			
-			auto unblocked = unblocked_cdf(t);
-			auto total_decided = (max_decided + min_decided - max_decided*min_decided);
-			total_decided *= unblocked;
-			
-			auto prev_p = 0.0; // = latency_d.cdf(0.0);
-			for(size_t crossing_t=t; crossing_t < N; ++crossing_t) {
-				auto lag = ts[crossing_t] - ts[t];
-				auto p = latency_d.cdf(lag + dt);
-				out.ps[crossing_t] += total_decided*(p - prev_p);
-				prev_p = p;
-			}
-		}
-
-		out.uncrossed = 1.0 - out.ps[N-1];
-	}
-
 };
 
 }
