@@ -29,6 +29,7 @@ def args_def(decl):
     return argstrings
 
 def func_def(decl, funcname=None):
+    if hasattr(decl, 'has_static') and decl.has_static: return ''
     typestring = decl.create_decl_string()
 
     argstrings = args_def(decl)
@@ -115,7 +116,8 @@ def main(namespace, *headers, outfile=None):
     generator_path, generator_name = utils.find_xml_generator()
     xml_generator_config = parser.xml_generator_configuration_t(
         xml_generator_path=generator_path,
-        xml_generator=generator_name)
+        xml_generator=generator_name,
+        cflags='-std=c++17')
 
     decls = parser.parse(headers, xml_generator_config)
     global_namespace = declarations.get_global_namespace(decls[0])

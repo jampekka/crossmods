@@ -1,6 +1,6 @@
 #pragma once
 #include "common.hpp"
-
+#include <tuple>
 
 namespace crossmods {
 using std::atan;
@@ -103,6 +103,12 @@ struct Vddm {
 		return decided;
 	}
 	
+	auto step(const Grid1d& acts, double tau, invec prev_weights, double decision_prob) const {
+		std::vector<double> new_weights(acts.N, 0.0);
+		double decided = step(acts, tau, prev_weights.data(), new_weights.data(), decision_prob);
+		return std::make_tuple(new_weights, decided);
+	}
+
 	private:
 	
 	template <typename callback>
@@ -169,7 +175,6 @@ struct Vddm {
 		blocker_decisions(grid, *out, taus, taus_b);
 		return out;
 	}
-
 };
 
 }
