@@ -53,8 +53,16 @@ struct Vddm {
 	double pass_threshold=0.0;
 	double scale=1.0;
 	double act_threshold=1.0;
-
-	Vddm(double dt, double std, double damping, double tau_threshold, double pass_threshold=0.0, double scale=1.0, double act_threshold=1.0)
+	
+	Vddm(
+			double dt, // Time-step used in the simulation
+			double std, // Standard deviation of the accmulation noise
+			double damping, // The damping term. TODO: This is currently in weird units
+			double tau_threshold, // The threshold when over which the input starts to accumulate positive activation
+			double pass_threshold=0.0, // The threshold under which the input starts to accumulate positive activation
+			double scale=1.0, // Scaling term for tau - tau_threshold
+			double act_threshold=1.0 // Threshold at what activation level the decision is made
+		)
 		:dt(dt), std(std), damping(damping), tau_threshold(tau_threshold), pass_threshold(pass_threshold), scale(scale),
 		act_threshold(act_threshold)
 		{}
