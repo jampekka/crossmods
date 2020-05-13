@@ -119,6 +119,10 @@ struct Vddm {
 
 	private:
 	
+	// This is the actual implementation of the decision process. It's here as a
+	// weird private template method, because C++ is a mess (in more detail, it's difficult
+	// to pass a function as a parameter in a generic way without templates). This is private
+	// because the Python binding generator can not handle templates.
 	template <typename callback>
 	double decisions(const Grid1d& acts, const double taus[], double decidedpdf[], size_t dur, callback cross_prob) const {
 		double undecided = 1.0;
@@ -147,20 +151,39 @@ struct Vddm {
 	
 	// TODO: Refactor these blocker hacks out of here
 	double blocker_decisions(const Grid1d& acts, const double taus[], const double taus_b[], double decidedpdf[], size_t dur) const {
+		// For the first veihcle, make a parameterization that will never cross before
+		// the vehicle by putting the tau_threshold to infinity. This is because the
+		// HIKER design where participants were instructed not to pass before the first
+		// veicle.
+		// NOTE: This does gather quite a bit of negative activation for the first vehicle,
+		// which may make the late crosses to be quite late.
+		// TODO: Try out a way to do this without accumulating the negative evidence
 		auto noearlycross = (*this);
 		noearlycross.tau_threshold = std::numeric_limits<double>::infinity();
 		noearlycross.decisions(acts, taus_b, decidedpdf, dur);
-
+		
+		// Create a function to return share of decisions to cross after
+		// the first vehicle.
 		auto unblocked = 0.0;
 		auto unblocked_share = [&](int t) {
 			unblocked += decidedpdf[t]*dt;
 			return unblocked;
 		};
-
+		
+		// For the second vehicle, make a parameterization that never crosses
+		// after the vehicle by putting the pass_threshold to infinity.
+		// This is due to the HIKER experiment design where the participants
+		// were not allowed to cross after the second car.
+		// The share of decisions for the first vehicle is passed to the
+		// second VDDM so that only the share that decided to cross after the
+		// first vehicle can make a crossing decision.
 		auto nolatecross = (*this);
 		nolatecross.pass_threshold = -std::numeric_limits<double>::infinity();
 		return nolatecross.decisions(acts, taus, decidedpdf, dur, unblocked_share);
 	}
+
+	// What follows are just overloads of the decisions methods to allow for
+	// easier to handle parameter types.
 
 	CrossingPdf& decisions(const Grid1d& grid, CrossingPdf& out, invec taus) const {
 		out.uncrossed = decisions(grid, taus.data(), out.ps.data(), out.ps.size());
