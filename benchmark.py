@@ -9,9 +9,9 @@ def main():
             dt=dt, std=0.75,
             damping=1.6,
             tau_threshold=2.3,
-            pass_threshold=1.0,
+            pass_threshold=0.0,
             )
-
+    
     dur = 20.0
     tau0 = 10.0
 
@@ -19,7 +19,7 @@ def main():
     ts = np.arange(0, dur, dt)
     tau = tau0 - ts
     
-    tau_block = tau - 5.0
+    tau_block = tau - 3.0
 
     grid = crossmods.Grid1d(-3.0, 3.0, 100)
     
@@ -31,11 +31,11 @@ def main():
     
     #plt.hist(sample[np.isfinite(sample)], bins=np.arange(ts[0], ts[-1], 0.2), density=True)
     #plt.plot(ts, np.array(pdf.ps)/(1 - pdf.uncrossed))
-    #print(sample)
     #plt.show()
 
     #print(list(map(pdf, sample)))
-    niter = 1
+    niter = 100
+    
 
     start = time.perf_counter()
     for i in range(niter):
