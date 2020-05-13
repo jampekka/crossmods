@@ -1,4 +1,4 @@
-#include "vddm.hpp"
+#include "crossmods.hpp"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <chrono>
@@ -17,6 +17,8 @@ int main() {
 		.tau_threshold=2.3,
 		.scale=1.0,
 	};
+
+	LognormalTdm tdm(1.0, 1.0, 1.0, 1.0, 0.0);
 	
 	size_t dur = 10.0/dt;
 	Grid1d grid({-3.0, 3.0, 100});
@@ -28,8 +30,10 @@ int main() {
 	std::generate(tau.begin(), tau.end(),
 			[&, t=0]() mutable { return tau0 - t++*dt;}
 			);
+	
+	tdm.decisions(tau, dt);
 
-	size_t niter = 100;
+	size_t niter = 10;
 	size_t ntrials = 6;
 	// OMG C++!!
 	vddm.decisions(grid, pdf, tau);
