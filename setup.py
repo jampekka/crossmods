@@ -52,7 +52,7 @@ def has_flag(compiler, flagname):
 
 
 def cpp_flag(compiler):
-    flags = ['-std=c++17']
+    flags = ['-std=c++14']
 
     for flag in flags:
         if has_flag(compiler, flag): return flag
