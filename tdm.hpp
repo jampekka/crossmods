@@ -92,6 +92,9 @@ struct LognormalTdm {
 			out.uncrossed -= p;
 			p /= dt;
 		}
+		if(out.uncrossed < 0) {
+			out.uncrossed = 0.0;
+		}
 
 		return out;
 	}
