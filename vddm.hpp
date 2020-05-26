@@ -71,13 +71,31 @@ struct Vddm {
 		auto alpha = 1.0 - exp(-dt*damping);
 		auto da = acts.dx;
 		auto N = acts.N;
-
+		
+		// pi/2.0 is the maximum for the atan nonlinearity
 		auto diff_mean_tau = dt*pi/2.0;
 		if(tau >= pass_threshold) {
+			// If we're over the pass threshold, run the diffusion
+			// "normally"
 			diff_mean_tau = dt*atan(scale*(tau - tau_threshold));
-		}
+		} // Otherwise use the maximum possible activation
 		
-		// TODO: There may be some unutilized symmetry in the normcdf
+
+		// This loop computes the variable drift diffusion. The equation is:
+		// act[i] - act[i-1] = D[i] = tau[i]*dt - alpha*act[i-1] + e, e ~ N(0, dt*std**2)
+		// For each outgoing bin, we approximate the bin's probability mass as the center
+		// of the bin so act[i-1,from] is a scalar, meaning
+		// D[i,from] ~ N(tau[i]*dt - alpha*act[i-1,from], dt*std**2)
+		//           = N(diff_mean[from], dt*std**2)
+		//
+		// Thus, the proportion of probability mass from acts[from] to acts[to]
+		// is
+		// P(D[i,from] < acts[to] - acts[from] + da & D[i,from] > acts[to] - acts[from] - da)
+		// = P(D[i,from] < acts[to] - acts[from] + da)*P(D[i,from] > acts[to] - acts[from] - da/2)
+		// 
+		// In the grid each endpoint is a startpoint of the next bin, so we can reuse the
+		// upper edge probability of a previous bin as complement of the lower edge probability
+		// of the next bin (too_small becomes small_enough).
 		#pragma omp parallel for reduction(+:new_weights[:N])
 		for(size_t from=0; from < N; ++from) {
 			auto diff_mean = diff_mean_tau - alpha*acts[from];
@@ -91,6 +109,11 @@ struct Vddm {
 			new_weights[N-1] += (1.0 - too_small)*prev_weights[from];
 		}
 		
+
+		// After diffusing, we compute how big a share of the probability mass
+		// is above the act_threshold, scale by decision_prob sum up these to
+		// get share decided and remove the decided share from the distribution
+		// leaving only the still undecided.
 		double decided = 0.0;
 		double weightsum = 0.0;
 		for(size_t i=0; i < N; ++i) {
@@ -103,6 +126,7 @@ struct Vddm {
 			weightsum += new_weights[i];
 		}
 
+		// And finally normalize the distribution to sum to one.
 		for(size_t i=0; i < N; ++i) {
 			//new_weights[i] /= (1.0 - decided);
 			new_weights[i] /= weightsum;
@@ -151,7 +175,7 @@ struct Vddm {
 	
 	// TODO: Refactor these blocker hacks out of here
 	double blocker_decisions(const Grid1d& acts, const double taus[], const double taus_b[], double decidedpdf[], size_t dur) const {
-		// For the first veihcle, make a parameterization that will never cross before
+		// For the first vehicle, make a parameterization that will never cross before
 		// the vehicle by putting the tau_threshold to infinity. This is because the
 		// HIKER design where participants were instructed not to pass before the first
 		// veicle.
