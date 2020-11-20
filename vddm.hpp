@@ -57,7 +57,7 @@ struct Vddm {
 	Vddm(
 			double dt, // Time-step used in the simulation
 			double std, // Standard deviation of the accmulation noise
-			double damping, // The damping term. TODO: This is currently in weird units
+			double damping, // The damping term
 			double tau_threshold, // The threshold when over which the input starts to accumulate positive activation
 			double pass_threshold=0.0, // The threshold under which the input starts to accumulate positive activation
 			double scale=1.0, // Scaling term for tau - tau_threshold
@@ -68,7 +68,7 @@ struct Vddm {
 		{}
 	
 	double step(const Grid1d& acts, double tau, const double prev_weights[], double new_weights[], double decision_prob) const {
-		auto alpha = 1.0 - exp(-dt*damping);
+		auto alpha = 1.0 - exp(-dt/damping);
 		auto da = acts.dx;
 		auto N = acts.N;
 		
