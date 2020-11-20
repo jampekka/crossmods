@@ -117,7 +117,7 @@ def main(namespace, *headers, outfile=None):
     xml_generator_config = parser.xml_generator_configuration_t(
         xml_generator_path=generator_path,
         xml_generator=generator_name,
-        cflags='-std=c++17')
+        cflags='-std=c++14')
 
     decls = parser.parse(headers, xml_generator_config)
     global_namespace = declarations.get_global_namespace(decls[0])
