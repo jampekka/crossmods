@@ -59,26 +59,27 @@ struct Vddm {
 			double std, // Standard deviation of the accmulation noise
 			double damping, // The damping term
 			double tau_threshold, // The threshold when over which the input starts to accumulate positive activation
-			double pass_threshold=0.0, // The threshold under which the input starts to accumulate positive activation
 			double scale=1.0, // Scaling term for tau - tau_threshold
 			double act_threshold=1.0 // Threshold at what activation level the decision is made
 		)
-		:dt(dt), std(std), damping(damping), tau_threshold(tau_threshold), pass_threshold(pass_threshold), scale(scale),
-		act_threshold(act_threshold)
+		:dt(dt), std(std), damping(damping), tau_threshold(tau_threshold), scale(scale), act_threshold(act_threshold)
 		{}
 	
 	double step(const Grid1d& acts, double tau, const double prev_weights[], double new_weights[], double decision_prob) const {
-		auto alpha = 1.0 - exp(-dt/damping);
+		//auto alpha = 1.0 - exp(-dt/damping);
+		auto alpha = damping;
 		auto da = acts.dx;
 		auto N = acts.N;
 		
+		auto diff_mean_tau = dt*atan(scale*(tau - tau_threshold));
+		
+		// TODO: This is now handled when computing the generalized tau
 		// pi/2.0 is the maximum for the atan nonlinearity
-		auto diff_mean_tau = dt*pi/2.0;
-		if(tau >= pass_threshold) {
+		//auto diff_mean_tau = dt*pi/2.0;
+		//if(tau >= pass_threshold) {
 			// If we're over the pass threshold, run the diffusion
 			// "normally"
-			diff_mean_tau = dt*atan(scale*(tau - tau_threshold));
-		} // Otherwise use the maximum possible activation
+		//} // Otherwise use the maximum possible activation
 		
 
 		// This loop computes the variable drift diffusion. The equation is:
@@ -98,7 +99,7 @@ struct Vddm {
 		// of the next bin (too_small becomes small_enough).
 		#pragma omp parallel for reduction(+:new_weights[:N])
 		for(size_t from=0; from < N; ++from) {
-			auto diff_mean = diff_mean_tau - alpha*acts[from];
+			auto diff_mean = diff_mean_tau - dt*alpha*acts[from];
 			double too_small = 0.0;
 			for(size_t to=0; to < N - 1; ++to) {
 				auto diff = acts[to] - acts[from] + da/2.0;
