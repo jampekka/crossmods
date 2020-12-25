@@ -71,7 +71,8 @@ struct Vddm {
 		auto da = acts.dx;
 		auto N = acts.N;
 		
-		auto diff_mean_tau = dt*atan(scale*(tau - tau_threshold));
+		//auto diff_mean_tau = dt*atan(scale*(tau - tau_threshold));
+		auto diff_mean_tau = dt*tau;
 		
 		// TODO: This is now handled when computing the generalized tau
 		// pi/2.0 is the maximum for the atan nonlinearity
